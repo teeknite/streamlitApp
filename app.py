@@ -36,8 +36,6 @@ def create_pdf(row, headers):
         pdf.multi_cell(0, 8, f" {value}", border='B')
         pdf.ln(4)
     
-    # --- CRITICAL FIX HERE ---
-    # We output the PDF as bytes directly
     return pdf.output()
 
 # --- STREAMLIT UI ---
@@ -49,12 +47,15 @@ st.write("Upload a CSV file to generate standalone, formatted documents for each
 uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
 
 if uploaded_file is not None:
-    # Use 'index_col=False' to ensure the first column isn't eaten as an index
     df = pd.read_csv(uploaded_file)
     headers = df.columns.tolist()
     
     st.write("### Data Preview")
-    st.dataframe(df.head())
+    
+    # --- UPDATED DATA PREVIEW ---
+    # Passing 'df' instead of 'df.head()' loads all rows.
+    # 'height=400' forces a scrollable window so it doesn't take up the whole screen.
+    st.dataframe(df, height=400)
 
     st.divider()
     
@@ -66,7 +67,6 @@ if uploaded_file is not None:
     selected_row = df.iloc[row_to_gen]
     
     # Generate the PDF data
-    # We wrap it in bytes() to make sure Streamlit's download button is happy
     pdf_output = create_pdf(selected_row, headers)
     
     # Dynamic filename
@@ -74,9 +74,7 @@ if uploaded_file is not None:
     
     st.download_button(
         label=f"📥 Download PDF for Row {row_to_gen}",
-        data=bytes(pdf_output), # This ensures it's the correct data type
+        data=bytes(pdf_output),
         file_name=filename,
         mime="application/pdf"
     )
-
-    st.info("Everything looks good! Click the button above to grab your file.")
