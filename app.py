@@ -19,51 +19,46 @@ def create_pdf(row, headers):
     pdf = CSVToPDF()
     pdf.add_page()
     
-    # Requirement 1: Reduce font size to 10pt
+    # 10pt Font Size
     pdf.set_font("Arial", size=10)
     
-    # Requirement 3: 2-Column Setup parameters
-    col_width = 92  # Width of each column 
-    x_left = 10     # Left margin
-    x_right = 108   # Starts right after the left column + small gap
+    # 2-Column Setup parameters
+    col_width = 92  
+    x_left = 10     
+    x_right = 108   
     
-    # Track starting vertical position
     y_current = pdf.get_y()
     max_y_in_row = y_current
     
     for i, header in enumerate(headers):
-        # Requirement 2: Title and value on the same line
+        # Format with double asterisks for Markdown bolding
         value = str(row[header])
-        text = f"{header}: {value}"
+        text = f"**{header}:** {value}"
         
         is_left_column = (i % 2 == 0)
         
-        # Handle Page Breaks if we get too close to the bottom of the page
+        # Handle Page Breaks
         if y_current > 265 and is_left_column:
             pdf.add_page()
             y_current = pdf.get_y()
             max_y_in_row = y_current
             
-        # Set the horizontal (X) and vertical (Y) position
         if is_left_column:
             pdf.set_xy(x_left, y_current)
         else:
             pdf.set_xy(x_right, y_current)
             
-        # Draw the text box. 'multi_cell' automatically wraps long text!
-        # Note: A light grey background (fill) is added to make the blocks distinct
         pdf.set_fill_color(245, 245, 245)
-        pdf.multi_cell(col_width, 6, text, border=0, fill=True)
         
-        # Check how far down the text wrapped to prevent overlapping rows
+        # NEW: Added markdown=True and align='L'
+        pdf.multi_cell(col_width, 6, text, border=0, fill=True, align='L', markdown=True)
+        
         end_y = pdf.get_y()
         if end_y > max_y_in_row:
             max_y_in_row = end_y
             
-        # If we are on the right column (or it's the very last item), 
-        # push the current Y down to start the next row
         if not is_left_column or i == len(headers) - 1:
-            y_current = max_y_in_row + 4 # 4mm vertical padding between rows
+            y_current = max_y_in_row + 4
             max_y_in_row = y_current
             
     return pdf.output()
