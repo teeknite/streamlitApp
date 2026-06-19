@@ -18,24 +18,54 @@ class CSVToPDF(FPDF):
 def create_pdf(row, headers):
     pdf = CSVToPDF()
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
     
-    # Add a border/box for aesthetic
-    pdf.set_draw_color(200, 200, 200)
+    # Requirement 1: Reduce font size to 10pt
+    pdf.set_font("Arial", size=10)
     
-    for header in headers:
-        # Header (Bold)
-        pdf.set_font("Arial", 'B', 11)
-        pdf.set_fill_color(240, 240, 240)
-        pdf.cell(0, 8, f" {header}", ln=True, fill=True)
-        
-        # Value (Normal)
-        pdf.set_font("Arial", size=12)
+    # Requirement 3: 2-Column Setup parameters
+    col_width = 92  # Width of each column 
+    x_left = 10     # Left margin
+    x_right = 108   # Starts right after the left column + small gap
+    
+    # Track starting vertical position
+    y_current = pdf.get_y()
+    max_y_in_row = y_current
+    
+    for i, header in enumerate(headers):
+        # Requirement 2: Title and value on the same line
         value = str(row[header])
-        # Multi_cell handles long text and wraps it
-        pdf.multi_cell(0, 8, f" {value}", border='B')
-        pdf.ln(4)
-    
+        text = f"{header}: {value}"
+        
+        is_left_column = (i % 2 == 0)
+        
+        # Handle Page Breaks if we get too close to the bottom of the page
+        if y_current > 265 and is_left_column:
+            pdf.add_page()
+            y_current = pdf.get_y()
+            max_y_in_row = y_current
+            
+        # Set the horizontal (X) and vertical (Y) position
+        if is_left_column:
+            pdf.set_xy(x_left, y_current)
+        else:
+            pdf.set_xy(x_right, y_current)
+            
+        # Draw the text box. 'multi_cell' automatically wraps long text!
+        # Note: A light grey background (fill) is added to make the blocks distinct
+        pdf.set_fill_color(245, 245, 245)
+        pdf.multi_cell(col_width, 6, text, border=0, fill=True)
+        
+        # Check how far down the text wrapped to prevent overlapping rows
+        end_y = pdf.get_y()
+        if end_y > max_y_in_row:
+            max_y_in_row = end_y
+            
+        # If we are on the right column (or it's the very last item), 
+        # push the current Y down to start the next row
+        if not is_left_column or i == len(headers) - 1:
+            y_current = max_y_in_row + 4 # 4mm vertical padding between rows
+            max_y_in_row = y_current
+            
     return pdf.output()
 
 # --- STREAMLIT UI ---
@@ -51,25 +81,16 @@ if uploaded_file is not None:
     headers = df.columns.tolist()
     
     st.write("### Data Preview")
-    
-    # --- UPDATED DATA PREVIEW ---
-    # Passing 'df' instead of 'df.head()' loads all rows.
-    # 'height=400' forces a scrollable window so it doesn't take up the whole screen.
     st.dataframe(df, height=400)
 
     st.divider()
     
     st.write("### Generate Documents")
     
-    # Option to select a specific row
     row_to_gen = st.selectbox("Select a row to generate", df.index, format_func=lambda x: f"Row {x}")
     
     selected_row = df.iloc[row_to_gen]
-    
-    # Generate the PDF data
     pdf_output = create_pdf(selected_row, headers)
-    
-    # Dynamic filename
     filename = f"Record_Row_{row_to_gen}.pdf"
     
     st.download_button(
