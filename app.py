@@ -19,7 +19,6 @@ def create_pdf(row, headers):
     pdf = CSVToPDF()
     pdf.add_page()
     
-    # 10pt Font Size
     pdf.set_font("Arial", size=10)
     
     # 2-Column Setup parameters
@@ -31,10 +30,6 @@ def create_pdf(row, headers):
     max_y_in_row = y_current
     
     for i, header in enumerate(headers):
-        # Format with double asterisks for Markdown bolding
-        value = str(row[header])
-        text = f"**{header}:** {value}"
-        
         is_left_column = (i % 2 == 0)
         
         # Handle Page Breaks
@@ -43,20 +38,34 @@ def create_pdf(row, headers):
             y_current = pdf.get_y()
             max_y_in_row = y_current
             
+        # Set the correct X and Y position for the grid
         if is_left_column:
             pdf.set_xy(x_left, y_current)
         else:
             pdf.set_xy(x_right, y_current)
             
-        pdf.set_fill_color(245, 245, 245)
-        
-        # NEW: Added markdown=True and align='L'
-        pdf.multi_cell(col_width, 6, text, border=0, fill=True, align='L', markdown=True)
-        
-        end_y = pdf.get_y()
-        if end_y > max_y_in_row:
-            max_y_in_row = end_y
+        # --- SPACER LOGIC ---
+        # If pandas named the column "Unnamed:", treat it as an empty space
+        if str(header).startswith("Unnamed:"):
+            # We don't draw anything, but we account for standard line height
+            end_y = y_current + 6
+            if end_y > max_y_in_row:
+                max_y_in_row = end_y
+        else:
+            # Clean up the value: if it's empty/NaN, print nothing instead of 'nan'
+            val = row[header]
+            value = "" if pd.isna(val) else str(val)
             
+            text = f"**{header}:** {value}"
+            
+            pdf.set_fill_color(245, 245, 245)
+            pdf.multi_cell(col_width, 6, text, border=0, fill=True, align='L', markdown=True)
+            
+            end_y = pdf.get_y()
+            if end_y > max_y_in_row:
+                max_y_in_row = end_y
+                
+        # Push Y coordinate down to the next row
         if not is_left_column or i == len(headers) - 1:
             y_current = max_y_in_row + 4
             max_y_in_row = y_current
